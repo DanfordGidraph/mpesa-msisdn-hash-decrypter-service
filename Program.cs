@@ -3,7 +3,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
-string db_path = Path.Combine(Directory.GetCurrentDirectory(), "src/data/sqlite/database.sqlite");
 DotEnv.Load(Path.Combine(Directory.GetCurrentDirectory(), ".env"));
 
 var builder = WebApplication.CreateBuilder(args);
@@ -28,7 +27,7 @@ builder.Services.AddAuthentication("Bearer")
 
 // DATABASE Services
 builder.Services
-    .AddSqlite<DatabaseContext>(builder.Configuration.GetConnectionString("SqliteDb") ?? $"Data Source={db_path}")
+    .AddSqlite<DatabaseContext>($"Data Source={Path.Combine(Directory.GetCurrentDirectory(), "src/data/sqlite/database.sqlite")}")
     .AddDatabaseDeveloperPageExceptionFilter();
 
 // SWAGGER Services
