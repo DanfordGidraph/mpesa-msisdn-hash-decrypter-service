@@ -1,5 +1,4 @@
-using System;
-using Microsoft.Data.Sqlite;
+using System.Data.SQLite;
 
 namespace MPESA_V2_APIV2_MSISDN_DECRYPTER
 {
@@ -19,7 +18,7 @@ namespace MPESA_V2_APIV2_MSISDN_DECRYPTER
         public static void GenerateDatabase()
         {
             // Create the Table if it does not exist
-            SqliteConnection connection = DatabaseUtils.CreateConnection();
+            SQLiteConnection connection = DatabaseUtils.CreateConnection();
             DatabaseUtils.CreateTable(connection, "PhoneNumbers", "hash PRIMARY KEY, msisdn INTEGER", "WITHOUT ROWID");
             connection.Close();
 
@@ -33,7 +32,7 @@ namespace MPESA_V2_APIV2_MSISDN_DECRYPTER
             var overalStart = DateTime.Now;
             Console.WriteLine($"Starting at {overalStart}");
 
-            SqliteConnection connection = DatabaseUtils.CreateConnection();
+            SQLiteConnection connection = DatabaseUtils.CreateConnection();
 
             // var tasks = new List<Task>();
             foreach (var seed in seeds)
@@ -83,7 +82,7 @@ namespace MPESA_V2_APIV2_MSISDN_DECRYPTER
         public static void SplitDatabase()
         {
 
-            SqliteConnection sourceConnection = DatabaseUtils.CreateConnection();
+            SQLiteConnection sourceConnection = DatabaseUtils.CreateConnection();
             //  Users
             var startUsers = DateTime.Now;
 
@@ -91,7 +90,7 @@ namespace MPESA_V2_APIV2_MSISDN_DECRYPTER
 
             DatabaseUtils.CreateDatabase(dest_users_db_path);
 
-            SqliteConnection destUsersConnection = DatabaseUtils.CreateConnection(dest_users_db_path);
+            SQLiteConnection destUsersConnection = DatabaseUtils.CreateConnection(dest_users_db_path);
 
             string[] Users = DatabaseUtils
                 .ReadData(sourceConnection, "Users", "email, name, role, token", "")
@@ -129,7 +128,7 @@ namespace MPESA_V2_APIV2_MSISDN_DECRYPTER
 
                 Console.WriteLine($"Splitting {NumberRows.Length} PhoneNumbers::");
 
-                SqliteConnection destConnection = DatabaseUtils.CreateConnection(dest_numbers_db_path);
+                SQLiteConnection destConnection = DatabaseUtils.CreateConnection(dest_numbers_db_path);
                 DatabaseUtils.CreateTable(destConnection, "PhoneNumbers", "hash TEXT PRIMARY KEY, msisdn INTEGER", "WITHOUT ROWID");
 
                 DatabaseUtils.InsertData(destConnection, "PhoneNumbers", "hash, msisdn", string.Join(",", NumberRows));
@@ -150,7 +149,7 @@ namespace MPESA_V2_APIV2_MSISDN_DECRYPTER
             try
             {
                 // Check if the database exists
-                SqliteConnection rootConnection;
+                SQLiteConnection rootConnection;
 
                 string root_db_path = Path.Combine(Directory.GetCurrentDirectory(), "src/data/sqlite/", "database.sqlite");
                 if (File.Exists(root_db_path))
@@ -172,7 +171,7 @@ namespace MPESA_V2_APIV2_MSISDN_DECRYPTER
                 }
                 else
                 {
-                    SqliteConnection sourceUsersConnection = DatabaseUtils.CreateConnection(source_users_db_path);
+                    SQLiteConnection sourceUsersConnection = DatabaseUtils.CreateConnection(source_users_db_path);
 
                     var Users = DatabaseUtils
                     .ReadData(sourceUsersConnection, "Users", "email, name,  role, token", "")
@@ -205,7 +204,7 @@ namespace MPESA_V2_APIV2_MSISDN_DECRYPTER
                         return;
                     }
 
-                    SqliteConnection sourceConnection = DatabaseUtils.CreateConnection(source_numbers_db_path);
+                    SQLiteConnection sourceConnection = DatabaseUtils.CreateConnection(source_numbers_db_path);
 
                     var seedNumbers = DatabaseUtils
                         .ReadData(sourceConnection, "PhoneNumbers", "hash, msisdn", "")
@@ -225,7 +224,7 @@ namespace MPESA_V2_APIV2_MSISDN_DECRYPTER
             catch (Exception ex)
             {
                 Console.WriteLine("Error:: => " + ex.Message);
-                throw ex;
+                throw;
             }
         }
 
@@ -235,7 +234,7 @@ namespace MPESA_V2_APIV2_MSISDN_DECRYPTER
             {
                 // Check if the database exists
                 string root_db_path = Path.Combine(Directory.GetCurrentDirectory(), "src/data/sqlite/", "database.sqlite");
-                SqliteConnection rootConnection = DatabaseUtils.CreateConnection(root_db_path);
+                SQLiteConnection rootConnection = DatabaseUtils.CreateConnection(root_db_path);
                 List<string> matched = ["25474", "25475"];
                 matched.ForEach(match =>
                 {
@@ -247,7 +246,7 @@ namespace MPESA_V2_APIV2_MSISDN_DECRYPTER
             catch (Exception ex)
             {
                 Console.WriteLine("Error:: => " + ex.Message);
-                throw ex;
+                throw;
             }
         }
     }
