@@ -16,4 +16,10 @@
     <PackageReference Include="System.Data.SQLite" Version="1.0.118" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="src\data\**\*.*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content> 
+  </ItemGroup>
+
 </Project>
