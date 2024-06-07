@@ -7,35 +7,29 @@ namespace MPESA_V2_APIV2_MSISDN_DECRYPTER
     public class User(string name, string email, string role)
     {
 
-        [Required]
-        [Column(TypeName = "varchar(30)")]
         public string Name { get; set; } = name;
 
-        [Required]
-        [Column(TypeName = "varchar(30)")]
         public string Email { get; set; } = email;
 
-        [Required]
-        [Column(TypeName = "varchar(30)")]
         public string Role { get; set; } = role;
     }
 
-    public record UserRecord(string Name, string Email, string Role, string Token)
+    public record UserRecord(string Email, string Name, string Role, string Token)
     {
         [Key]
-        [Column(TypeName = "varchar(30)")]
+        [Required]
+        [Column("email", TypeName = "TEXT")]
+        public string Email { get; set; } = Email;
+
+        [Column("name", TypeName = "TEXT")]
         public string Name { get; set; } = Name;
 
         [Required]
-        [Column(TypeName = "varchar(30)")]
-        public string Email { get; set; } = Email;
-
-        [Required]
-        [Column(TypeName = "varchar(30)")]
+        [Column("role", TypeName = "TEXT")]
         public string Role { get; set; } = Role;
 
         [Required]
-        [Column(TypeName = "varchar(30)")]
+        [Column("token", TypeName = "TEXT")]
         public string Token { get; set; } = Token;
 
     }
