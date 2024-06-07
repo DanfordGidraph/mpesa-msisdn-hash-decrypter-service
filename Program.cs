@@ -46,6 +46,13 @@ var url = $"http://127.0.0.1:{port}";
 
 var app = builder.Build();
 
+using (var scope = app.Services.CreateScope())
+{
+    using var db = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
+    db.Database.EnsureCreated();
+}
+
+
 if (app.Environment.IsDevelopment())
 {
     app.UseOpenApi();
@@ -166,7 +173,7 @@ app.MapPost("/db/split", async (HttpRequest request, DatabaseContext db) =>
         var admin = admins.Where(admin => admin.Email.Equals("gidraph@gidraphdanford.dev")).FirstOrDefault();
         if (admin == null || !admin.Token.Equals(adminToken)) return Results.Unauthorized();
 
-        DatabaseGenerator.SplitDatabase();
+        DatabaseGenerator.SplitDatabase(db);
 
         return Results.Ok("Database Split Successfully");
 
@@ -181,11 +188,11 @@ app.MapPost("/db/split", async (HttpRequest request, DatabaseContext db) =>
     .Produces<string>(StatusCodes.Status200OK)
     .Produces(StatusCodes.Status401Unauthorized);
 
-app.MapPost("/db/rehydrate", (HttpRequest request) =>
+app.MapPost("/db/rehydrate", (HttpRequest request, DatabaseContext db) =>
 {
     try
     {
-        DatabaseGenerator.RehydrateDatabase();
+        DatabaseGenerator.RehydrateDatabase(db);
         return Results.Ok("Database Rehydrated Successfully");
     }
     catch (Exception ex)
@@ -199,11 +206,11 @@ app.MapPost("/db/rehydrate", (HttpRequest request) =>
     .Produces(StatusCodes.Status401Unauthorized)
     .Produces<PhoneNumber>(StatusCodes.Status200OK);
 
-app.MapPost("/db/generate", (HttpRequest request) =>
+app.MapPost("/db/generate", (HttpRequest request, DatabaseContext db) =>
 {
     try
     {
-        DatabaseGenerator.GenerateDatabase();
+        DatabaseGenerator.PopulateDtabase(db);
         return Results.Ok("Database Generated Successfully");
     }
     catch (Exception ex)
@@ -212,7 +219,7 @@ app.MapPost("/db/generate", (HttpRequest request) =>
         return Results.Unauthorized();
     }
 })
-    .RequireAuthorization()
+    // .RequireAuthorization()
     .WithName("GenerateDatabase")
     .Produces(StatusCodes.Status401Unauthorized)
     .Produces<PhoneNumber>(StatusCodes.Status200OK);
