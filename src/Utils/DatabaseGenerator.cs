@@ -1,10 +1,12 @@
-using System.Data.SQLite;
+using Microsoft.Data.Sqlite;
 
 namespace MPESA_V2_APIV2_MSISDN_DECRYPTER
 {
     public static class DatabaseGenerator
     {
-        static readonly List<string> seeds =
+        static readonly string root_db_path = Path.Combine(Directory.GetCurrentDirectory(), "src/data/sqlite/", "database.sqlite");
+
+        static readonly List<string> safaricomSeeds =
         [
             "254700000000", "254701000000", "254702000000", "254703000000", "254704000000", "254705000000", "254706000000","254707000000","254708000000","254709000000",
             "254710000000", "254711000000", "254712000000", "254713000000", "254714000000", "254715000000", "254716000000","254717000000","254718000000","254719000000",
@@ -15,74 +17,61 @@ namespace MPESA_V2_APIV2_MSISDN_DECRYPTER
             "254110000000", "254111000000", "254112000000", "254113000000", "254114000000", "254115000000", "254116000000","254117000000","254118000000","254119000000",
         ];
 
-        public static void GenerateDatabase()
-        {
-            // Create the Table if it does not exist
-            SQLiteConnection connection = DatabaseUtils.CreateConnection();
-            DatabaseUtils.CreateTable(connection, "PhoneNumbers", "hash PRIMARY KEY, msisdn INTEGER", "WITHOUT ROWID");
-            connection.Close();
-
-            PopulateDtabase();
-        }
-
-        public static void PopulateDtabase()
+        public static void PopulateDtabase(DatabaseContext context)
         {
 
 
             var overalStart = DateTime.Now;
             Console.WriteLine($"Starting at {overalStart}");
 
-            SQLiteConnection connection = DatabaseUtils.CreateConnection();
-
-            // var tasks = new List<Task>();
-            foreach (var seed in seeds)
+            PhoneNumber[] dbValues = new PhoneNumber[safaricomSeeds.Count * 1000000];
+            var parallelProcessStart = DateTime.Now;
+            Parallel.ForEach(safaricomSeeds, (seed, _, outerIndx) =>
             {
-                // tasks.Add(Task.Run(() =>
-                // {
                 var start = DateTime.Now;
-                var seedData = new List<string>();
-                for (int i = 0; i <= 999999; i++) seedData.Add(i.ToString());
+                var seedData = new int[1000000];
 
-                Console.WriteLine($"\nCrypto hashing::{seed} Start {seedData.Count}");
+                Console.WriteLine($"\nCrypto hashing::{seed} Start {seedData.Length} at {start}");
 
-                string[] dbValues = new string[seedData.Count];
-                foreach (var num in seedData)
+                Parallel.ForEach(seedData, (_, _, index) =>
                 {
-                    // Console.WriteLine($"hashing::{seed}::{num}");
-                    string msisdn = (long.Parse(seed) + int.Parse(num)).ToString();
+                    string msisdn = (long.Parse(seed) + index).ToString();
                     string hash = CryptoUtils.HashToShorter(msisdn);
-                    // Write to database
-                    dbValues[int.Parse(num)] = $"('{hash}', '{msisdn}')";
-                }
-                Console.WriteLine($"Writing {dbValues.Length} records from {seed} to Database");
-                DatabaseUtils.InsertData(connection, "PhoneNumbers", "hash, msisdn", string.Join(",", dbValues));
+                    dbValues[(outerIndx * 1000000) + index] = new PhoneNumber(hash, msisdn);
+                });
+                Console.WriteLine($"Added {seedData.Length} records from {seed} to DB Values List");
+
                 var end = DateTime.Now;
                 Console.WriteLine($"hashing::{seed} took {(end - start).TotalSeconds} s");
 
-                // return "done";
-                // }));
-                // Console.WriteLine($"Task added {tasks.Count}");
+            });
+            var parallelProcessEnd = DateTime.Now;
+            Console.WriteLine($"Parallel Process took {(parallelProcessEnd - parallelProcessStart).TotalSeconds} s");
+
+            PhoneNumber[] phoneNumbersChunk;
+            for (int i = 0; i < dbValues.Length; i += 5000000)
+            {
+                var length = dbValues.Length - i < 5000000 ? dbValues.Length - i : 5000000;
+                phoneNumbersChunk = new PhoneNumber[length];
+                Array.Copy(dbValues, i, phoneNumbersChunk, 0, length);
+                // process chunk
+                var chunkStart = DateTime.Now;
+                Console.WriteLine($"\n Writing {phoneNumbersChunk.Length} records to the Database");
+                context.PhoneNumbers.BulkInsertOptimized(phoneNumbersChunk);
+                var written = i > 0 ? i : phoneNumbersChunk.Length;
+                Console.WriteLine($"\tFinished Writing {written} records to the Database");
+                var chunkEnd = DateTime.Now;
+                Console.WriteLine($"\tChunk took {(chunkEnd - chunkStart).TotalSeconds} s");
             }
-            connection.Close();
+
             var overalEnd = DateTime.Now;
             Console.WriteLine($"Overall took {(overalEnd - overalStart).TotalSeconds} s");
-
-            // try
-            // {
-            //     Task.WaitAll([.. tasks]);
-            //     Console.WriteLine($"All tasks completed {tasks.Count}");
-            //     connection.Close();
-            // }
-            // catch (Exception ex)
-            // {
-            //     Console.WriteLine(ex);
-            // }
         }
 
-        public static void SplitDatabase()
+        public static void SplitDatabase(DatabaseContext context)
         {
 
-            SQLiteConnection sourceConnection = DatabaseUtils.CreateConnection();
+            SqliteConnection sourceConnection = DatabaseUtils.CreateConnection();
             //  Users
             var startUsers = DateTime.Now;
 
@@ -90,7 +79,7 @@ namespace MPESA_V2_APIV2_MSISDN_DECRYPTER
 
             DatabaseUtils.CreateDatabase(dest_users_db_path);
 
-            SQLiteConnection destUsersConnection = DatabaseUtils.CreateConnection(dest_users_db_path);
+            SqliteConnection destUsersConnection = DatabaseUtils.CreateConnection(dest_users_db_path);
 
             string[] Users = DatabaseUtils
                 .ReadData(sourceConnection, "Users", "email, name, role, token", "")
@@ -128,7 +117,7 @@ namespace MPESA_V2_APIV2_MSISDN_DECRYPTER
 
                 Console.WriteLine($"Splitting {NumberRows.Length} PhoneNumbers::");
 
-                SQLiteConnection destConnection = DatabaseUtils.CreateConnection(dest_numbers_db_path);
+                SqliteConnection destConnection = DatabaseUtils.CreateConnection(dest_numbers_db_path);
                 DatabaseUtils.CreateTable(destConnection, "PhoneNumbers", "hash TEXT PRIMARY KEY, msisdn INTEGER", "WITHOUT ROWID");
 
                 DatabaseUtils.InsertData(destConnection, "PhoneNumbers", "hash, msisdn", string.Join(",", NumberRows));
@@ -144,14 +133,13 @@ namespace MPESA_V2_APIV2_MSISDN_DECRYPTER
 
         }
 
-        public static void RehydrateDatabase()
+        public static void RehydrateDatabase(DatabaseContext context)
         {
             try
             {
                 // Check if the database exists
-                SQLiteConnection rootConnection;
+                SqliteConnection rootConnection;
 
-                string root_db_path = Path.Combine(Directory.GetCurrentDirectory(), "src/data/sqlite/", "database.sqlite");
                 if (File.Exists(root_db_path))
                 {
                     Console.WriteLine("Database exists, deleting and recreating");
@@ -171,7 +159,7 @@ namespace MPESA_V2_APIV2_MSISDN_DECRYPTER
                 }
                 else
                 {
-                    SQLiteConnection sourceUsersConnection = DatabaseUtils.CreateConnection(source_users_db_path);
+                    SqliteConnection sourceUsersConnection = DatabaseUtils.CreateConnection(source_users_db_path);
 
                     var Users = DatabaseUtils
                     .ReadData(sourceUsersConnection, "Users", "email, name,  role, token", "")
@@ -204,7 +192,7 @@ namespace MPESA_V2_APIV2_MSISDN_DECRYPTER
                         return;
                     }
 
-                    SQLiteConnection sourceConnection = DatabaseUtils.CreateConnection(source_numbers_db_path);
+                    SqliteConnection sourceConnection = DatabaseUtils.CreateConnection(source_numbers_db_path);
 
                     var seedNumbers = DatabaseUtils
                         .ReadData(sourceConnection, "PhoneNumbers", "hash, msisdn", "")
@@ -228,13 +216,12 @@ namespace MPESA_V2_APIV2_MSISDN_DECRYPTER
             }
         }
 
-        public static void CleanupDatabse()
+        public static void CleanupDatabse(DatabaseContext context)
         {
             try
             {
                 // Check if the database exists
-                string root_db_path = Path.Combine(Directory.GetCurrentDirectory(), "src/data/sqlite/", "database.sqlite");
-                SQLiteConnection rootConnection = DatabaseUtils.CreateConnection(root_db_path);
+                SqliteConnection rootConnection = DatabaseUtils.CreateConnection(root_db_path);
                 List<string> matched = ["25474", "25475"];
                 matched.ForEach(match =>
                 {
