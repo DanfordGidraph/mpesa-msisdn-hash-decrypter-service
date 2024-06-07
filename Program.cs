@@ -27,7 +27,7 @@ builder.Services.AddAuthentication("Bearer")
 
 // DATABASE Services
 builder.Services
-    .AddSqlite<DatabaseContext>($"Data Source={Path.Combine(Directory.GetCurrentDirectory(), "src/data/sqlite/database.sqlite")}")
+    .AddDbContext<DatabaseContext>(options => options.UseSqlite($"Data Source={Path.Combine(Directory.GetCurrentDirectory(), "src/data/sqlite/database.sqlite")}"))
     .AddDatabaseDeveloperPageExceptionFilter();
 
 // SWAGGER Services
