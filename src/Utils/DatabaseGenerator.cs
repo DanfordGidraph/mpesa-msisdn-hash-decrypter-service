@@ -48,21 +48,21 @@ namespace MPESA_V2_APIV2_MSISDN_DECRYPTER
             var parallelProcessEnd = DateTime.Now;
             Console.WriteLine($"Parallel Process took {(parallelProcessEnd - parallelProcessStart).TotalSeconds} s");
 
-            PhoneNumber[] phoneNumbersChunk;
-            for (int i = 0; i < dbValues.Length; i += 5000000)
+
+            SqliteConnection connection = DatabaseUtils.CreateConnection(root_db_path);
+            foreach (var chunk in dbValues.Chunk(2000000))
             {
-                var length = dbValues.Length - i < 5000000 ? dbValues.Length - i : 5000000;
-                phoneNumbersChunk = new PhoneNumber[length];
-                Array.Copy(dbValues, i, phoneNumbersChunk, 0, length);
-                // process chunk
                 var chunkStart = DateTime.Now;
-                Console.WriteLine($"\n Writing {phoneNumbersChunk.Length} records to the Database");
-                context.PhoneNumbers.BulkInsertOptimized(phoneNumbersChunk);
-                var written = i > 0 ? i : phoneNumbersChunk.Length;
-                Console.WriteLine($"\tFinished Writing {written} records to the Database");
+                Console.WriteLine($"\n\n Writing {chunk.Length} records to the Database");
+                // With EF Core
+                // context.PhoneNumbers.BulkInsertOptimized(chunk);
+                // With SQLite
+                DatabaseUtils.InsertData(connection, "PhoneNumbers", "hash, msisdn", string.Join(",", chunk.Select(pn => $"('{pn.Hash}', '{pn.Msisdn}')")));
+                Console.WriteLine($"\tFinished Writing {chunk.Length} records to the Database");
                 var chunkEnd = DateTime.Now;
                 Console.WriteLine($"\tChunk took {(chunkEnd - chunkStart).TotalSeconds} s");
-            }
+            };
+            connection.Close();
 
             var overalEnd = DateTime.Now;
             Console.WriteLine($"Overall took {(overalEnd - overalStart).TotalSeconds} s");
