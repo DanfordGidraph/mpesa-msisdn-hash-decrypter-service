@@ -1,4 +1,4 @@
-using System.Data.SQLite;
+using Microsoft.Data.Sqlite;
 
 namespace MPESA_V2_APIV2_MSISDN_DECRYPTER
 {
@@ -6,10 +6,10 @@ namespace MPESA_V2_APIV2_MSISDN_DECRYPTER
     {
         static readonly string db_path = Path.Combine(Directory.GetCurrentDirectory(), "src/data/sqlite/database.sqlite");
 
-        public static SQLiteConnection CreateConnection(string? path = null)
+        public static SqliteConnection CreateConnection(string? path = null)
         {
 
-            SQLiteConnection sqlite_conn = new($"Data Source={path ?? db_path}");
+            SqliteConnection sqlite_conn = new($"Data Source={path ?? db_path}");
             // Open the connection:
             try { sqlite_conn.Open(); }
             catch (Exception ex) { Console.WriteLine($"Connection Failed:: {ex.Message}"); }
@@ -20,7 +20,7 @@ namespace MPESA_V2_APIV2_MSISDN_DECRYPTER
         {
             try
             {
-                SQLiteConnection.CreateFile(path ?? db_path);
+                File.Create(path ?? db_path);
                 Console.WriteLine("Database Created Successfully");
             }
             catch (Exception ex)
@@ -29,12 +29,11 @@ namespace MPESA_V2_APIV2_MSISDN_DECRYPTER
             }
         }
 
-        public static void CreateTable(SQLiteConnection conn, string tableName, string columns, string extraCommands = ";")
+        public static void CreateTable(SqliteConnection conn, string tableName, string columns, string extraCommands = ";")
         {
             try
             {
-                SQLiteCommand sqlite_cmd;
-                sqlite_cmd = conn.CreateCommand();
+                SqliteCommand sqlite_cmd;
                 string Createsql = $"CREATE TABLE IF NOT EXISTS {tableName} ({columns}) {extraCommands}";
                 sqlite_cmd = conn.CreateCommand();
                 sqlite_cmd.CommandText = Createsql;
@@ -47,11 +46,11 @@ namespace MPESA_V2_APIV2_MSISDN_DECRYPTER
             }
         }
 
-        public static void InsertData(SQLiteConnection conn, string tableName, string columns, string values)
+        public static void InsertData(SqliteConnection conn, string tableName, string columns, string values)
         {
             try
             {
-                SQLiteCommand sqlite_cmd;
+                SqliteCommand sqlite_cmd;
                 sqlite_cmd = conn.CreateCommand();
                 sqlite_cmd.CommandText = $"INSERT INTO {tableName} ({columns}) VALUES {values}; ";
                 sqlite_cmd.ExecuteNonQuery();
@@ -63,12 +62,12 @@ namespace MPESA_V2_APIV2_MSISDN_DECRYPTER
             }
         }
 
-        public static List<string> ReadData(SQLiteConnection conn, string tableName, string columns, string conditions)
+        public static List<string> ReadData(SqliteConnection conn, string tableName, string columns, string conditions)
         {
             try
             {
-                SQLiteDataReader sqlite_datareader;
-                SQLiteCommand sqlite_cmd;
+                SqliteDataReader sqlite_datareader;
+                SqliteCommand sqlite_cmd;
                 sqlite_cmd = conn.CreateCommand();
                 sqlite_cmd.CommandText = conditions.Length > 0 ? $"SELECT {columns} FROM {tableName} WHERE {conditions}" : $"SELECT {columns} FROM {tableName}";
 
@@ -94,11 +93,11 @@ namespace MPESA_V2_APIV2_MSISDN_DECRYPTER
             }
         }
 
-        public static void DeleteData(SQLiteConnection conn, string tableName, string conditions)
+        public static void DeleteData(SqliteConnection conn, string tableName, string conditions)
         {
             try
             {
-                SQLiteCommand sqlite_cmd;
+                SqliteCommand sqlite_cmd;
                 sqlite_cmd = conn.CreateCommand();
                 sqlite_cmd.CommandText = $"DELETE FROM {tableName} WHERE {conditions}";
                 sqlite_cmd.ExecuteNonQuery();
