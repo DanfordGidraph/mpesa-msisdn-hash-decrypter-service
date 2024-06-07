@@ -219,7 +219,7 @@ app.MapPost("/db/generate", (HttpRequest request, DatabaseContext db) =>
         return Results.Unauthorized();
     }
 })
-    // .RequireAuthorization()
+    .RequireAuthorization()
     .WithName("GenerateDatabase")
     .Produces(StatusCodes.Status401Unauthorized)
     .Produces<PhoneNumber>(StatusCodes.Status200OK);
