@@ -86,12 +86,38 @@ app.MapGet("/", () =>
 app.MapGet("/decrypt/{hash}", async (string hash, DatabaseContext db) =>
 {
     if (hash == null || hash.Equals("")) return Results.BadRequest("Hash is required");
-    string shortenedHash = CryptoUtils.ShortenHash(hash.ToUpper());
-    Console.WriteLine($"Shortened Hash: {shortenedHash}");
+    string searchHash = hash.Replace(" ", "");
+    string shortenedHash = CryptoUtils.ShortenHash(searchHash.ToUpper());
 
-    var matches = await db.PhoneNumbers.Where(phoneNumber => phoneNumber.Hash.Equals(shortenedHash)).ToListAsync();
-    if (matches.Count == 0) return Results.NotFound("No phone number found for the given hash");
-    return Results.Ok(new { status = true, phone = matches[0].Msisdn, hash });
+    if (shortenedHash.Contains("*"))
+    {
+        //    .FromSqlInterpolated($"SELECT * FROM PhoneNumbers WHERE hash LIKE {shortenedHash.Replace("*", "%")}")
+        var potentialMatches = await db.PhoneNumbers
+        .Where(p => EF.Functions.Like(p.Hash, $"%{shortenedHash.Replace("*", "%")}%"))
+           .ToListAsync(); // Load data into memory
+
+        // Step 2: Apply FuzzySharp scoring in memory
+        var matches = potentialMatches
+            .Select(row => new
+            {
+                Row = row,
+                Ratio = FuzzySharp.Fuzz.Ratio(row.Hash, searchHash)
+            })
+            .OrderByDescending(x => x.Ratio) // Order by highest similarity score
+            .Select(x => x.Row)
+            .ToList();
+
+        if (matches.Count == 0) return Results.NotFound("No phone number found for the given hash");
+        return Results.Ok(new { status = true, phone = matches[0].Msisdn, hash });
+    }
+    else
+    {
+        Console.WriteLine($"Shortened Hash: {shortenedHash}");
+
+        var matches = await db.PhoneNumbers.Where(phoneNumber => phoneNumber.Hash.Equals(shortenedHash)).ToListAsync();
+        if (matches.Count == 0) return Results.NotFound("No phone number found for the given hash");
+        return Results.Ok(new { status = true, phone = matches[0].Msisdn, hash });
+    }
 })
     .RequireAuthorization()
     .WithName("GetPhoneNumberByHash")
